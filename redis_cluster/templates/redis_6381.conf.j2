@@ -1,0 +1,13 @@
+bind {{ ansible_facts.eth0.ipv4.address }}
+port 6381
+daemonize yes
+pidfile "/opt/redis_6381/pid/redis_6381.pid"
+logfile "/opt/redis_6381/logs/redis_6381.log"
+dbfilename "redis_6381.rdb"
+dir "/data/redis_6381/"
+appendonly yes
+appendfilename "redis.aof"
+appendfsync everysec
+cluster-enabled yes
+cluster-config-file nodes_6381.conf
+cluster-node-timeout 15000

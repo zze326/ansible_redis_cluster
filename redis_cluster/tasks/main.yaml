@@ -1,0 +1,72 @@
+#01.创建用户组
+- name: 01_create_group
+  group:
+    name: redis 
+    gid: 777 
+
+#02.创建用户
+- name: 02_create_user
+  user:
+    name: redis 
+    uid: 777 
+    group: redis 
+    shell: /sbin/nologin
+    create_home: no
+
+#03.拷贝执行文件
+- name: 03_copy_cmd
+  copy:
+    src: redis_cmd/
+    dest:  /usr/local/bin/
+    mode: '0755'
+
+#04.拷贝运行目录
+- name: 04_mkdir_conf
+  copy:
+    src: "{{ item }}"
+    dest: /opt/
+    owner: redis
+    group: redis
+  loop:
+    - redis_6380
+    - redis_6381
+    
+#05.创建数据目录
+- name: 05_mkdir_data
+  file: 
+    dest: "/data/{{ item }}"
+    state: directory 
+    owner: redis 
+    group: redis 
+  loop:
+    - redis_6380 
+    - redis_6381 
+
+#06.拷贝配置文件模版
+- name: 06_copy_conf
+  template:
+    src: "{{ item.src}}"
+    dest: "{{ item.dest }}"
+    backup: yes
+  loop:
+    - { src: 'redis_6380.conf.j2', dest: '/opt/redis_6380/conf/redis_6380.conf' }
+    - { src: 'redis_6381.conf.j2', dest: '/opt/redis_6381/conf/redis_6381.conf' }
+    - { src: 'redis-master.service.j2', dest: '/usr/lib/systemd/system/redis-master.service' }
+    - { src: 'redis-slave.service.j2', dest: '/usr/lib/systemd/system/redis-slave.service' }
+  notify:
+    - restart redis-master
+    - restart redis-slave 
+
+#07.启动服务
+- name: 07_start_redis
+  systemd: 
+    name: "{{ item }}" 
+    state: started 
+    daemon_reload: yes
+  loop:
+  - redis-master 
+  - redis-slave
+
+#08.初始化操作
+- name: 08_init_cluster
+  shell: 'echo "yes"|redis-cli --cluster create 10.0.0.51:6380 10.0.0.52:6380 10.0.0.53:6380 10.0.0.51:6381 10.0.0.52:6381 10.0.0.53:6381 --cluster-replicas 1'
